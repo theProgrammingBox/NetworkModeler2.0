@@ -23,7 +23,7 @@
     <ClInclude Include="Header.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="MatMulMat.h">
+    <ClInclude Include="MatrixMultiply.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

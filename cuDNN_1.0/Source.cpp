@@ -1,4 +1,4 @@
-#include "MatMulMat.h"
+#include "MatrixMultiply.h"
 
 int main()
 {
@@ -14,28 +14,32 @@ int main()
 	const size_t INPUT_FEATURES = 3;
 	const size_t OUTPUT_FEATURES = 2;
 
-	MatMulMat matMulMat(&cublasHandle, &curandHandle, INPUT_SIZE, INPUT_FEATURES, OUTPUT_FEATURES, BATCH_SIZE);
-	matMulMat.Forward();
+	MatrixMultiply model(&cublasHandle, &curandHandle, INPUT_SIZE, INPUT_FEATURES, OUTPUT_FEATURES, BATCH_SIZE);
+	model.RandomizeMat1();
+	model.RandomizeMat2();
+	model.Mat1MulMat2();
+	model.PrintMat1();
+	model.PrintMat2();
+	model.PrintMat3();
 
-	matMulMat.PrintMat1();
-	matMulMat.PrintMat2();
-	matMulMat.PrintMat3();
+	model.RandomizeMat1();
+	model.RandomizeMat3();
+	model.Mat1TMulMat3();
+	model.PrintMat1();
+	model.PrintMat3();
+	model.PrintMat2();
 
-	matMulMat.RandomizeMat1();
-	matMulMat.Mat2Backward();
-	matMulMat.PrintMat1();
-	matMulMat.PrintMat3();
-	matMulMat.PrintMat2();
+	model.RandomizeMat3();
+	model.RandomizeMat2();
+	model.Mat3MulMat2T();
+	model.PrintMat3();
+	model.PrintMat2();
+	model.PrintMat1();
 
-	matMulMat.Mat1Backward();
-	matMulMat.PrintMat3();
-	matMulMat.PrintMat2();
-	matMulMat.PrintMat1();
+	model.SaveToFile("MatrixMultiply.txt");
 
-	matMulMat.SaveToFile("MatMulMat.txt");
-
-	MatMulMat matMulMat2(&cublasHandle, &curandHandle, INPUT_SIZE, INPUT_FEATURES, OUTPUT_FEATURES, BATCH_SIZE);
-	matMulMat2.LoadFromFile("MatMulMat.txt");
+	MatrixMultiply matMulMat2(&cublasHandle, &curandHandle, INPUT_SIZE, INPUT_FEATURES, OUTPUT_FEATURES, BATCH_SIZE);
+	matMulMat2.LoadFromFile("MatrixMultiply.txt");
 	matMulMat2.PrintMat3();
 	matMulMat2.PrintMat2();
 	matMulMat2.PrintMat1();

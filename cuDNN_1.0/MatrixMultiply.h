@@ -1,7 +1,7 @@
 #pragma once
 #include "Header.h"
 
-class MatMulMat
+class MatrixMultiply
 {
 public:
 	cublasHandle_t* cublasHandle;
@@ -13,10 +13,10 @@ public:
 	size_t fullMat1Bytes, fullMat2Bytes, fullMat3Bytes;
 	
 	float* gpuMat1, * gpuMat2, * gpuMat3;
+	float* cpuMat1, * cpuMat2, * cpuMat3;
 	
-	MatMulMat(cublasHandle_t* cublasHandle, curandGenerator_t* curandHandle, size_t mat1Rows, size_t mat1Cols, size_t mat3Cols, size_t batches) :
-		cublasHandle(cublasHandle), curandHandle(curandHandle),
-		mat1Rows(mat1Rows), mat1Cols(mat1Cols), mat3Cols(mat3Cols), batches(batches)
+	MatrixMultiply(cublasHandle_t* cublasHandle, curandGenerator_t* curandHandle, size_t mat1Rows, size_t mat1Cols, size_t mat3Cols, size_t batches) :
+		cublasHandle(cublasHandle), curandHandle(curandHandle), mat1Rows(mat1Rows), mat1Cols(mat1Cols), mat3Cols(mat3Cols), batches(batches)
 	{
 		mat1Size = mat1Cols * mat1Rows;
 		mat2Size = mat3Cols * mat1Cols;
@@ -32,18 +32,26 @@ public:
 		cudaMalloc(&gpuMat2, fullMat2Bytes);
 		cudaMalloc(&gpuMat3, fullMat3Bytes);
 		
+		cpuMat1 = new float[fullMat1Size];
+		cpuMat2 = new float[fullMat2Size];
+		cpuMat3 = new float[fullMat3Size];
+		
 		RandomizeMat1();
 		RandomizeMat2();
 	}
 	
-	~MatMulMat()
+	~MatrixMultiply()
 	{
 		cudaFree(gpuMat1);
 		cudaFree(gpuMat2);
 		cudaFree(gpuMat3);
+
+		delete[] cpuMat1;
+		delete[] cpuMat2;
+		delete[] cpuMat3;
 	}
 
-	void Forward()
+	void Mat1MulMat2()
 	{
 		cublasSgemmStridedBatched(
 			*cublasHandle, CUBLAS_OP_N, CUBLAS_OP_N,
@@ -52,10 +60,6 @@ public:
 			gpuMat1, mat1Cols, mat1Size,
 			&ZEROf, gpuMat3, mat3Cols, mat3Size,
 			batches);
-		
-		float* cpuMat1 = new float[fullMat1Size];
-		float* cpuMat2 = new float[fullMat2Size];
-		float* cpuMat3 = new float[fullMat3Size];
 		
 		cudaMemcpy(cpuMat1, gpuMat1, fullMat1Bytes, cudaMemcpyDeviceToHost);
 		cudaMemcpy(cpuMat2, gpuMat2, fullMat2Bytes, cudaMemcpyDeviceToHost);
@@ -77,14 +81,10 @@ public:
 				}
 			}
 		}
-		cout << "Forward error: " << error / (mat1Rows * mat3Cols * batches) << "\n";
-
-		delete[] cpuMat1;
-		delete[] cpuMat2;
-		delete[] cpuMat3;
+		cout << "Mat1MulMat2 error: " << error / (mat1Rows * mat3Cols * batches) << "\n";
 	}
 
-	void Mat2Backward()
+	void Mat1TMulMat3()
 	{
 		cublasSgemmStridedBatched(
 			*cublasHandle, CUBLAS_OP_N, CUBLAS_OP_T,
@@ -93,10 +93,6 @@ public:
 			gpuMat1, mat1Cols, mat1Size,
 			&ZEROf, gpuMat2, mat3Cols, mat2Size,
 			batches);
-
-		float* cpuMat1 = new float[fullMat1Size];
-		float* cpuMat2 = new float[fullMat2Size];
-		float* cpuMat3 = new float[fullMat3Size];
 
 		cudaMemcpy(cpuMat1, gpuMat1, fullMat1Bytes, cudaMemcpyDeviceToHost);
 		cudaMemcpy(cpuMat2, gpuMat2, fullMat2Bytes, cudaMemcpyDeviceToHost);
@@ -118,14 +114,10 @@ public:
 				}
 			}
 		}
-		cout << "Mat2Backward error: " << error / (mat1Cols * mat3Cols * batches) << "\n";
-
-		delete[] cpuMat1;
-		delete[] cpuMat2;
-		delete[] cpuMat3;
+		cout << "Mat1TMulMat3 error: " << error / (mat1Cols * mat3Cols * batches) << "\n";
 	}
 
-	void Mat1Backward()
+	void Mat3MulMat2T()
 	{
 		cublasSgemmStridedBatched(
 			*cublasHandle, CUBLAS_OP_T, CUBLAS_OP_N,
@@ -134,10 +126,6 @@ public:
 			gpuMat3, mat3Cols, mat3Size,
 			&ZEROf, gpuMat1, mat1Cols, mat1Size,
 			batches);
-
-		float* cpuMat1 = new float[fullMat1Size];
-		float* cpuMat2 = new float[fullMat2Size];
-		float* cpuMat3 = new float[fullMat3Size];
 
 		cudaMemcpy(cpuMat1, gpuMat1, fullMat1Bytes, cudaMemcpyDeviceToHost);
 		cudaMemcpy(cpuMat2, gpuMat2, fullMat2Bytes, cudaMemcpyDeviceToHost);
@@ -159,11 +147,7 @@ public:
 				}
 			}
 		}
-		cout << "Mat1Backward error: " << error / (mat1Rows * mat1Cols * batches) << "\n";
-
-		delete[] cpuMat1;
-		delete[] cpuMat2;
-		delete[] cpuMat3;
+		cout << "Mat3MulMat2T error: " << error / (mat1Rows * mat1Cols * batches) << "\n";
 	}
 
 	void RandomizeMat1()
@@ -183,7 +167,6 @@ public:
 
 	void PrintMat1()
 	{
-		float* cpuMat1 = new float[fullMat1Size];
 		cudaMemcpy(cpuMat1, gpuMat1, fullMat1Bytes, cudaMemcpyDeviceToHost);
 
 		cout << "Mat1:\n";
@@ -200,13 +183,10 @@ public:
 			cout << "\n";
 		}
 		cout << "\n";
-
-		delete[] cpuMat1;
 	}
 	
 	void PrintMat2()
 	{
-		float* cpuMat2 = new float[fullMat2Size];
 		cudaMemcpy(cpuMat2, gpuMat2, fullMat2Bytes, cudaMemcpyDeviceToHost);
 
 		cout << "Mat2:\n";
@@ -223,13 +203,10 @@ public:
 			cout << "\n";
 		}
 		cout << "\n";
-
-		delete[] cpuMat2;
 	}
 
 	void PrintMat3()
 	{
-		float* cpuMat3 = new float[fullMat3Size];
 		cudaMemcpy(cpuMat3, gpuMat3, fullMat3Bytes, cudaMemcpyDeviceToHost);
 
 		cout << "Mat3:\n";
@@ -246,16 +223,10 @@ public:
 			cout << "\n";
 		}
 		cout << "\n";
-
-		delete[] cpuMat3;
 	}
 
 	void SaveToFile(string fileName)
 	{
-		float* cpuMat1 = new float[fullMat1Size];
-		float* cpuMat2 = new float[fullMat2Size];
-		float* cpuMat3 = new float[fullMat3Size];
-
 		cudaMemcpy(cpuMat1, gpuMat1, fullMat1Bytes, cudaMemcpyDeviceToHost);
 		cudaMemcpy(cpuMat2, gpuMat2, fullMat2Bytes, cudaMemcpyDeviceToHost);
 		cudaMemcpy(cpuMat3, gpuMat3, fullMat3Bytes, cudaMemcpyDeviceToHost);
@@ -265,18 +236,10 @@ public:
 		file.write((char*)cpuMat2, fullMat2Bytes);
 		file.write((char*)cpuMat3, fullMat3Bytes);
 		file.close();
-
-		delete[] cpuMat1;
-		delete[] cpuMat2;
-		delete[] cpuMat3;
 	}
 
 	void LoadFromFile(string fileName)
 	{
-		float* cpuMat1 = new float[fullMat1Size];
-		float* cpuMat2 = new float[fullMat2Size];
-		float* cpuMat3 = new float[fullMat3Size];
-
 		ifstream file(fileName, ios::in | ios::binary);
 		file.read((char*)cpuMat1, fullMat1Bytes);
 		file.read((char*)cpuMat2, fullMat2Bytes);
@@ -286,9 +249,5 @@ public:
 		cudaMemcpy(gpuMat1, cpuMat1, fullMat1Bytes, cudaMemcpyHostToDevice);
 		cudaMemcpy(gpuMat2, cpuMat2, fullMat2Bytes, cudaMemcpyHostToDevice);
 		cudaMemcpy(gpuMat3, cpuMat3, fullMat3Bytes, cudaMemcpyHostToDevice);
-
-		delete[] cpuMat1;
-		delete[] cpuMat2;
-		delete[] cpuMat3;
 	}
 };
