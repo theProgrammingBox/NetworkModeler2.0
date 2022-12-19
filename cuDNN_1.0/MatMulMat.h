@@ -249,4 +249,46 @@ public:
 
 		delete[] cpuMat3;
 	}
+
+	void SaveToFile(string fileName)
+	{
+		float* cpuMat1 = new float[fullMat1Size];
+		float* cpuMat2 = new float[fullMat2Size];
+		float* cpuMat3 = new float[fullMat3Size];
+
+		cudaMemcpy(cpuMat1, gpuMat1, fullMat1Bytes, cudaMemcpyDeviceToHost);
+		cudaMemcpy(cpuMat2, gpuMat2, fullMat2Bytes, cudaMemcpyDeviceToHost);
+		cudaMemcpy(cpuMat3, gpuMat3, fullMat3Bytes, cudaMemcpyDeviceToHost);
+
+		ofstream file(fileName, ios::out | ios::binary);
+		file.write((char*)cpuMat1, fullMat1Bytes);
+		file.write((char*)cpuMat2, fullMat2Bytes);
+		file.write((char*)cpuMat3, fullMat3Bytes);
+		file.close();
+
+		delete[] cpuMat1;
+		delete[] cpuMat2;
+		delete[] cpuMat3;
+	}
+
+	void LoadFromFile(string fileName)
+	{
+		float* cpuMat1 = new float[fullMat1Size];
+		float* cpuMat2 = new float[fullMat2Size];
+		float* cpuMat3 = new float[fullMat3Size];
+
+		ifstream file(fileName, ios::in | ios::binary);
+		file.read((char*)cpuMat1, fullMat1Bytes);
+		file.read((char*)cpuMat2, fullMat2Bytes);
+		file.read((char*)cpuMat3, fullMat3Bytes);
+		file.close();
+
+		cudaMemcpy(gpuMat1, cpuMat1, fullMat1Bytes, cudaMemcpyHostToDevice);
+		cudaMemcpy(gpuMat2, cpuMat2, fullMat2Bytes, cudaMemcpyHostToDevice);
+		cudaMemcpy(gpuMat3, cpuMat3, fullMat3Bytes, cudaMemcpyHostToDevice);
+
+		delete[] cpuMat1;
+		delete[] cpuMat2;
+		delete[] cpuMat3;
+	}
 };

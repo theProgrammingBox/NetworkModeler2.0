@@ -7,7 +7,7 @@ int main()
 
 	curandGenerator_t curandHandle;
 	curandCreateGenerator(&curandHandle, CURAND_RNG_PSEUDO_DEFAULT);
-	curandSetPseudoRandomGeneratorSeed(curandHandle, 1234ULL);
+	curandSetPseudoRandomGeneratorSeed(curandHandle, duration_cast<nanoseconds>(high_resolution_clock::now().time_since_epoch()).count());
 
 	const size_t BATCH_SIZE = 2;
 	const size_t INPUT_SIZE = 4;
@@ -31,6 +31,14 @@ int main()
 	matMulMat.PrintMat3();
 	matMulMat.PrintMat2();
 	matMulMat.PrintMat1();
+
+	matMulMat.SaveToFile("MatMulMat.txt");
+
+	MatMulMat matMulMat2(&cublasHandle, &curandHandle, INPUT_SIZE, INPUT_FEATURES, OUTPUT_FEATURES, BATCH_SIZE);
+	matMulMat2.LoadFromFile("MatMulMat.txt");
+	matMulMat2.PrintMat3();
+	matMulMat2.PrintMat2();
+	matMulMat2.PrintMat1();
 	
 	curandDestroyGenerator(curandHandle);
 	cublasDestroy(cublasHandle);
